@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { Navbar } from "@/components/Navbar";
 import { TweetAnalyzer } from "@/components/TweetAnalyzer";
 import { BlacklistSection } from "@/components/BlacklistSection";
+import { Profile } from "@/components/Profile";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
@@ -19,7 +20,7 @@ export default function Dashboard() {
       <Navbar />
       
       <main className="flex-1 py-6">
-        <div className="max-content-width space-y-8">
+        <div className="container px-4 mx-auto space-y-8">
           <div className="animate-fade-in">
             <h1 className="text-3xl font-bold tracking-tight">
               Welcome, <span className="text-primary">{user?.username || user?.email?.split('@')[0] || 'User'}</span>
@@ -35,7 +36,10 @@ export default function Dashboard() {
             </div>
             
             <div className="col-span-full lg:col-span-1 animate-fade-in" style={{ animationDelay: "200ms" }}>
-              <BlacklistSection />
+              <div className="space-y-6">
+                <Profile />
+                <BlacklistSection />
+              </div>
             </div>
           </div>
         </div>

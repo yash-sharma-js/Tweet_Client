@@ -1,6 +1,4 @@
-
-import { useState } from "react";
-import { LogOut, Menu, Moon, Sun, X } from "lucide-react";
+import { Menu, LogOut, Moon, Sun, X } from "lucide-react";
 import { 
   Sheet, 
   SheetContent, 
@@ -9,6 +7,7 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { useTheme } from "@/hooks/useTheme";
 import { 
   AlertDialog, 
   AlertDialogAction, 
@@ -23,12 +22,7 @@ import {
 
 export function Navbar() {
   const { user, logout } = useAuth();
-  const [isDarkMode, setIsDarkMode] = useState(true); // Always dark mode for this app
-  
-  // Toggle function for future light mode support
-  const toggleTheme = () => {
-    setIsDarkMode(!isDarkMode);
-  };
+  const { isDarkMode, toggleTheme } = useTheme();
   
   // Get first letter of username for avatar
   const getInitial = () => {
@@ -48,7 +42,7 @@ export function Navbar() {
   
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl">
-      <div className="max-content-width flex h-16 items-center justify-between">
+      <div className="container mx-auto px-4 flex h-16 items-center justify-between">
         <div className="flex items-center gap-2">
           {/* Mobile menu */}
           <Sheet>
