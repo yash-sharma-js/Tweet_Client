@@ -9,7 +9,87 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      blacklisted_users: {
+        Row: {
+          blacklisted: boolean
+          created_at: string
+          id: string
+          negative_tweet_count: number
+          twitter_username: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          blacklisted?: boolean
+          created_at?: string
+          id?: string
+          negative_tweet_count?: number
+          twitter_username: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          blacklisted?: boolean
+          created_at?: string
+          id?: string
+          negative_tweet_count?: number
+          twitter_username?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          username?: string
+        }
+        Relationships: []
+      }
+      tweets: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          sentiment_label: string
+          sentiment_score: number
+          twitter_username: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          sentiment_label: string
+          sentiment_score: number
+          twitter_username: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          sentiment_label?: string
+          sentiment_score?: number
+          twitter_username?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

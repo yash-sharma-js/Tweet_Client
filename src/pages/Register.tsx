@@ -13,7 +13,7 @@ export default function Register() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
-  const { register, googleLogin, isLoading } = useAuth();
+  const { register, isLoading } = useAuth();
   
   const validateForm = () => {
     if (password !== confirmPassword) {
@@ -41,14 +41,6 @@ export default function Register() {
       await register(username, email, password);
     } catch (err) {
       setError("Failed to create account. Please try again.");
-    }
-  };
-  
-  const handleGoogleLogin = async () => {
-    try {
-      await googleLogin();
-    } catch (err) {
-      setError("Failed to sign up with Google. Please try again.");
     }
   };
   
@@ -142,42 +134,6 @@ export default function Register() {
             Create Account
           </Button>
         </form>
-        
-        <div className="relative flex items-center justify-center">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-border"></div>
-          </div>
-          <div className="relative bg-card px-4 text-xs uppercase text-muted-foreground">
-            Or continue with
-          </div>
-        </div>
-        
-        <Button 
-          type="button" 
-          variant="outline" 
-          className="w-full" 
-          onClick={handleGoogleLogin}
-          disabled={isLoading}
-        >
-          <svg
-            className="mr-2 h-4 w-4"
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <circle cx="12" cy="12" r="10"></circle>
-            <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"></path>
-            <path d="m15 9-6 6"></path>
-            <path d="m9 9 6 6"></path>
-          </svg>
-          Sign up with Google
-        </Button>
       </div>
     </AuthLayout>
   );

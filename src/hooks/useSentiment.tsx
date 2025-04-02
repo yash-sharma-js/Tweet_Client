@@ -2,6 +2,8 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { useBlacklist } from "./useBlacklist";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "./useAuth";
 
 type SentimentResult = {
   score: number;
@@ -12,8 +14,8 @@ type SentimentResult = {
 export function useSentiment() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<SentimentResult | null>(null);
-  const { addToBlacklist } = useBlacklist();
-
+  const { user } = useAuth();
+  
   // Function to analyze sentiment
   const analyzeSentiment = async (username: string, tweetText: string) => {
     if (!tweetText.trim()) {
@@ -25,44 +27,44 @@ export function useSentiment() {
       setIsAnalyzing(true);
       setResult(null);
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Call Supabase edge function to analyze sentiment
+      const response = await fetch('https://netcarmsimamwzchhxkk.supabase.co/functions/v1/analyze-sentiment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${supabase.auth.getSession().then(res => res.data.session?.access_token)}`,
+        },
+        body: JSON.stringify({ username, tweet: tweetText }),
+      });
       
-      // Mock sentiment analysis logic
-      const containsOffensiveWords = 
-        tweetText.toLowerCase().includes("hate") || 
-        tweetText.toLowerCase().includes("stupid") ||
-        tweetText.toLowerCase().includes("terrible");
-      
-      const score = containsOffensiveWords 
-        ? -Math.random() * 0.8 - 0.2 // -0.2 to -1.0
-        : Math.random() * 1.6 - 0.8;  // -0.8 to 0.8
-      
-      let label: "positive" | "negative" | "neutral";
-      
-      if (score > 0.2) {
-        label = "positive";
-      } else if (score < -0.2) {
-        label = "negative";
-      } else {
-        label = "neutral";
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to analyze sentiment');
       }
       
-      const confidence = Math.abs(score) * 0.8 + 0.2; // 0.2 to 1.0
+      const data = await response.json();
+      const finalResult = { 
+        score: data.score, 
+        label: data.label as "positive" | "negative" | "neutral", 
+        confidence: data.confidence 
+      };
       
-      const finalResult = { score, label, confidence };
       setResult(finalResult);
       
-      // Check if tweet should be blacklisted (for demonstration)
-      if (label === "negative" && confidence > 0.7) {
-        addToBlacklist({
-          id: Date.now().toString(),
-          username,
-          tweet: tweetText,
-          score,
-          timestamp: new Date().toISOString()
+      // Store the tweet analysis in Supabase
+      if (user) {
+        await supabase.from('tweets').insert({
+          user_id: user.id,
+          twitter_username: username,
+          content: tweetText,
+          sentiment_score: finalResult.score,
+          sentiment_label: finalResult.label
         });
-        toast.info("Tweet has been added to the blacklist due to high negative sentiment");
+        
+        // Check if we need to update blacklist
+        if (finalResult.label === "negative") {
+          await updateBlacklist(username);
+        }
       }
       
       return finalResult;
@@ -72,6 +74,51 @@ export function useSentiment() {
       return null;
     } finally {
       setIsAnalyzing(false);
+    }
+  };
+  
+  // Function to update blacklist
+  const updateBlacklist = async (twitterUsername: string) => {
+    if (!user) return;
+    
+    try {
+      // Check if user already exists in blacklisted_users
+      const { data: existingUser } = await supabase
+        .from('blacklisted_users')
+        .select('*')
+        .eq('twitter_username', twitterUsername)
+        .single();
+      
+      if (existingUser) {
+        // User exists, increment negative tweet count
+        const newCount = existingUser.negative_tweet_count + 1;
+        const shouldBlacklist = newCount >= 3;
+        
+        await supabase
+          .from('blacklisted_users')
+          .update({ 
+            negative_tweet_count: newCount,
+            blacklisted: shouldBlacklist,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingUser.id);
+        
+        if (shouldBlacklist && !existingUser.blacklisted) {
+          toast.warning(`@${twitterUsername} has been blacklisted due to multiple negative tweets`);
+        }
+      } else {
+        // User doesn't exist, create new record
+        await supabase
+          .from('blacklisted_users')
+          .insert({
+            twitter_username: twitterUsername,
+            negative_tweet_count: 1,
+            blacklisted: false,
+            user_id: user.id
+          });
+      }
+    } catch (error) {
+      console.error("Error updating blacklist:", error);
     }
   };
 

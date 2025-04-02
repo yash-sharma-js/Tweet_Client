@@ -1,72 +1,134 @@
 
 import { useState, useEffect, createContext, useContext, ReactNode } from "react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "./useAuth";
 
 export type BlacklistedTweet = {
   id: string;
   username: string;
-  tweet: string;
-  score: number;
-  timestamp: string;
+  negative_tweet_count: number;
+  blacklisted: boolean;
+  updated_at: string;
 };
 
 interface BlacklistContextType {
   blacklist: BlacklistedTweet[];
-  addToBlacklist: (tweet: BlacklistedTweet) => void;
-  removeFromBlacklist: (id: string) => void;
-  clearBlacklist: () => void;
+  removeFromBlacklist: (id: string) => Promise<void>;
+  clearBlacklist: () => Promise<void>;
+  isLoading: boolean;
+  refreshBlacklist: () => Promise<void>;
 }
 
 const BlacklistContext = createContext<BlacklistContextType | undefined>(undefined);
 
 export const BlacklistProvider = ({ children }: { children: ReactNode }) => {
   const [blacklist, setBlacklist] = useState<BlacklistedTweet[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const { user } = useAuth();
 
-  // Load blacklist from localStorage on mount
+  // Load blacklist from Supabase when user changes
   useEffect(() => {
-    const savedBlacklist = localStorage.getItem("blacklistedTweets");
-    if (savedBlacklist) {
-      try {
-        setBlacklist(JSON.parse(savedBlacklist));
-      } catch (error) {
-        console.error("Error parsing blacklist from localStorage:", error);
-        localStorage.removeItem("blacklistedTweets");
-      }
+    if (user) {
+      refreshBlacklist();
+    } else {
+      setBlacklist([]);
     }
-  }, []);
+  }, [user]);
 
-  // Save blacklist to localStorage whenever it changes
-  useEffect(() => {
-    localStorage.setItem("blacklistedTweets", JSON.stringify(blacklist));
-  }, [blacklist]);
-
-  const addToBlacklist = (tweet: BlacklistedTweet) => {
-    setBlacklist(prev => {
-      // Check if tweet already exists in blacklist
-      if (prev.some(item => item.id === tweet.id)) {
-        return prev;
+  // Function to refresh blacklist from Supabase
+  const refreshBlacklist = async () => {
+    if (!user) return;
+    
+    try {
+      setIsLoading(true);
+      
+      const { data, error } = await supabase
+        .from('blacklisted_users')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('blacklisted', true)
+        .order('updated_at', { ascending: false });
+      
+      if (error) {
+        console.error("Error fetching blacklist:", error);
+        return;
       }
-      return [tweet, ...prev];
-    });
+      
+      const formattedData = data.map(item => ({
+        id: item.id,
+        username: item.twitter_username,
+        negative_tweet_count: item.negative_tweet_count,
+        blacklisted: item.blacklisted,
+        updated_at: item.updated_at
+      }));
+      
+      setBlacklist(formattedData);
+    } catch (error) {
+      console.error("Error refreshing blacklist:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const removeFromBlacklist = (id: string) => {
-    setBlacklist(prev => prev.filter(tweet => tweet.id !== id));
-    toast.success("Tweet removed from blacklist");
+  // Function to remove from blacklist
+  const removeFromBlacklist = async (id: string) => {
+    if (!user) return;
+    
+    try {
+      const { error } = await supabase
+        .from('blacklisted_users')
+        .update({ blacklisted: false })
+        .eq('id', id)
+        .eq('user_id', user.id);
+      
+      if (error) {
+        console.error("Error removing from blacklist:", error);
+        toast.error("Failed to remove from blacklist");
+        return;
+      }
+      
+      setBlacklist(prev => prev.filter(item => item.id !== id));
+      toast.success("Removed from blacklist");
+    } catch (error) {
+      console.error("Error removing from blacklist:", error);
+      toast.error("Failed to remove from blacklist");
+    }
   };
 
-  const clearBlacklist = () => {
-    setBlacklist([]);
-    toast.success("Blacklist cleared");
+  // Function to clear blacklist
+  const clearBlacklist = async () => {
+    if (!user) return;
+    
+    try {
+      const { error } = await supabase
+        .from('blacklisted_users')
+        .update({ blacklisted: false })
+        .eq('user_id', user.id)
+        .eq('blacklisted', true);
+      
+      if (error) {
+        console.error("Error clearing blacklist:", error);
+        toast.error("Failed to clear blacklist");
+        return;
+      }
+      
+      setBlacklist([]);
+      toast.success("Blacklist cleared");
+    } catch (error) {
+      console.error("Error clearing blacklist:", error);
+      toast.error("Failed to clear blacklist");
+    }
   };
 
   return (
     <BlacklistContext.Provider
       value={{
         blacklist,
-        addToBlacklist,
         removeFromBlacklist,
-        clearBlacklist
+        clearBlacklist,
+        isLoading,
+        refreshBlacklist
       }}
     >
       {children}

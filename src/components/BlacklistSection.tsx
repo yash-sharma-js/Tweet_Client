@@ -1,6 +1,6 @@
 
-import { useState } from "react";
-import { ChevronDown, ChevronUp, Trash2, AlertTriangle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ChevronDown, ChevronUp, Trash2, AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export function BlacklistSection() {
-  const { blacklist, removeFromBlacklist, clearBlacklist } = useBlacklist();
+  const { blacklist, removeFromBlacklist, clearBlacklist, isLoading, refreshBlacklist } = useBlacklist();
   const [isVisible, setIsVisible] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 3;
@@ -30,7 +30,14 @@ export function BlacklistSection() {
     currentPage * itemsPerPage
   );
   
-  const totalPages = Math.ceil(blacklist.length / itemsPerPage);
+  const totalPages = Math.max(1, Math.ceil(blacklist.length / itemsPerPage));
+  
+  useEffect(() => {
+    // Reset to page 1 when blacklist changes
+    if (currentPage > 1 && (currentPage - 1) * itemsPerPage >= blacklist.length) {
+      setCurrentPage(1);
+    }
+  }, [blacklist.length, currentPage]);
   
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -46,7 +53,7 @@ export function BlacklistSection() {
       <CardHeader className="flex flex-row items-center justify-between px-6">
         <CardTitle className="text-xl font-semibold tracking-tight flex items-center gap-2">
           <AlertTriangle className="h-5 w-5 text-negative" />
-          Blacklisted Tweets
+          Blacklisted Users
         </CardTitle>
         
         <div className="flex items-center gap-2">
@@ -64,23 +71,41 @@ export function BlacklistSection() {
       {isVisible && (
         <>
           <CardContent className="px-6">
-            {blacklist.length === 0 ? (
+            <div className="flex justify-end mb-4">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={refreshBlacklist}
+                disabled={isLoading}
+                className="flex items-center gap-1"
+              >
+                <RefreshCw className={cn("h-3 w-3", isLoading && "animate-spin")} />
+                Refresh
+              </Button>
+            </div>
+            
+            {isLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              </div>
+            ) : blacklist.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <div className="rounded-full bg-accent/30 p-3">
                   <AlertTriangle className="h-6 w-6 text-muted-foreground" />
                 </div>
-                <h3 className="mt-4 text-lg font-medium">No blacklisted tweets</h3>
+                <h3 className="mt-4 text-lg font-medium">No blacklisted users</h3>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Tweets with high negative sentiment will appear here.
+                  Users with 3+ negative tweets will appear here.
                 </p>
               </div>
             ) : (
               <div className="space-y-4">
-                {paginatedBlacklist.map((tweet: BlacklistedTweet) => (
-                  <BlacklistedTweetCard
-                    key={tweet.id}
-                    tweet={tweet}
-                    onRemove={() => removeFromBlacklist(tweet.id)}
+                {paginatedBlacklist.map((user: BlacklistedTweet) => (
+                  <BlacklistedUserCard
+                    key={user.id}
+                    user={user}
+                    onRemove={() => removeFromBlacklist(user.id)}
+                    formatDate={formatDate}
                   />
                 ))}
               </div>
@@ -122,7 +147,7 @@ export function BlacklistSection() {
                   <AlertDialogHeader>
                     <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will remove all tweets from the blacklist. This action cannot be undone.
+                      This will remove all users from the blacklist. This action cannot be undone.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -141,25 +166,26 @@ export function BlacklistSection() {
   );
 }
 
-interface BlacklistedTweetCardProps {
-  tweet: BlacklistedTweet;
+interface BlacklistedUserCardProps {
+  user: BlacklistedTweet;
   onRemove: () => void;
+  formatDate: (dateString: string) => string;
 }
 
-function BlacklistedTweetCard({ tweet, onRemove }: BlacklistedTweetCardProps) {
+function BlacklistedUserCard({ user, onRemove, formatDate }: BlacklistedUserCardProps) {
   return (
     <div className="rounded-lg border border-border/50 bg-secondary/30 p-4">
       <div className="flex justify-between mb-2">
         <div className="flex items-center gap-2">
           <div className="h-8 w-8 rounded-full bg-negative/10 flex items-center justify-center">
             <span className="text-xs font-medium text-negative">
-              {tweet.username.charAt(0).toUpperCase()}
+              {user.username.charAt(0).toUpperCase()}
             </span>
           </div>
           <div>
-            <p className="text-sm font-medium">@{tweet.username}</p>
+            <p className="text-sm font-medium">@{user.username}</p>
             <p className="text-xs text-muted-foreground">
-              {new Date(tweet.timestamp).toLocaleDateString()}
+              {formatDate(user.updated_at)}
             </p>
           </div>
         </div>
@@ -175,31 +201,15 @@ function BlacklistedTweetCard({ tweet, onRemove }: BlacklistedTweetCardProps) {
         </Button>
       </div>
       
-      <p className="text-sm text-muted-foreground mt-1">{tweet.tweet}</p>
-      
       <div className="mt-3 flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          <div 
-            className={cn(
-              "h-2 w-2 rounded-full",
-              tweet.score < -0.7 
-                ? "bg-negative" 
-                : tweet.score < -0.3 
-                ? "bg-negative/70" 
-                : "bg-negative/40"
-            )}
-          />
+          <div className="h-2 w-2 rounded-full bg-negative" />
           <span className="text-xs font-medium text-negative">
-            {Math.abs(tweet.score) > 0.7 
-              ? "Highly Negative" 
-              : Math.abs(tweet.score) > 0.3 
-              ? "Moderately Negative" 
-              : "Slightly Negative"
-            }
+            Blacklisted User
           </span>
         </div>
         <span className="text-xs text-muted-foreground">
-          Score: {tweet.score.toFixed(2)}
+          Negative tweets: {user.negative_tweet_count}
         </span>
       </div>
     </div>
