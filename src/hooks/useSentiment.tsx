@@ -27,17 +27,13 @@ export function useSentiment() {
       setIsAnalyzing(true);
       setResult(null);
       
-      // Call Supabase edge function to analyze sentiment
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData?.session?.access_token;
-      
-      const response = await fetch('https://netcarmsimamwzchhxkk.supabase.co/functions/v1/analyze-sentiment', {
+      // Call the new API endpoint to analyze sentiment
+      const response = await fetch('http://0.0.0.0:8082/checkTweet', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ username, tweet: tweetText }),
+        body: JSON.stringify({ text: tweetText }),
       });
       
       if (!response.ok) {
@@ -46,10 +42,26 @@ export function useSentiment() {
       }
       
       const data = await response.json();
-      const finalResult = { 
-        score: data.score, 
-        label: data.label as "positive" | "negative" | "neutral", 
-        confidence: data.confidence 
+      
+      // Extract sentiment scores from the response
+      const sentimentScores = data.sentiment_scores;
+      
+      // Find the sentiment with the highest score
+      const sentiments = Object.entries(sentimentScores) as [
+        "positive" | "negative" | "neutral", 
+        number
+      ][];
+      
+      const [highestSentiment, highestScore] = sentiments.reduce(
+        (max, current) => (current[1] > max[1] ? current : max),
+        ["neutral", 0]
+      );
+      
+      // Create a result object with the determined sentiment
+      const finalResult: SentimentResult = { 
+        score: highestScore,
+        label: highestSentiment, 
+        confidence: highestScore
       };
       
       setResult(finalResult);

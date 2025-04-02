@@ -14,9 +14,8 @@ interface AnalysisResultProps {
 }
 
 export function AnalysisResult({ result, tweet, username }: AnalysisResultProps) {
-  const { score, label, confidence } = result;
+  const { label, confidence } = result;
   
-  const scorePercentage = Math.abs(score) * 100;
   const confidencePercentage = confidence * 100;
   
   return (
@@ -68,28 +67,17 @@ export function AnalysisResult({ result, tweet, username }: AnalysisResultProps)
         <div className="space-y-3">
           <div className="space-y-1">
             <div className="flex justify-between text-xs">
-              <span>Sentiment Score</span>
-              <span>{scorePercentage.toFixed(0)}%</span>
+              <span>Confidence</span>
+              <span>{confidencePercentage.toFixed(0)}%</span>
             </div>
             <Progress 
-              value={scorePercentage} 
+              value={confidencePercentage} 
               className={cn(
                 "h-2",
                 label === "positive" && "bg-muted [&>div]:bg-positive",
                 label === "negative" && "bg-muted [&>div]:bg-negative",
                 label === "neutral" && "bg-muted [&>div]:bg-muted-foreground"
               )}
-            />
-          </div>
-          
-          <div className="space-y-1">
-            <div className="flex justify-between text-xs">
-              <span>Confidence</span>
-              <span>{confidencePercentage.toFixed(0)}%</span>
-            </div>
-            <Progress 
-              value={confidencePercentage} 
-              className="h-2 bg-muted [&>div]:bg-primary"
             />
           </div>
         </div>
