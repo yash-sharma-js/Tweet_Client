@@ -15,3 +15,10 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     autoRefreshToken: true,
   }
 });
+
+// Create a derived type for User that includes the username
+export type UserWithProfile = {
+  id: string;
+  username?: string;
+  email?: string;
+}

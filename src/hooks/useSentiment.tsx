@@ -28,11 +28,14 @@ export function useSentiment() {
       setResult(null);
       
       // Call Supabase edge function to analyze sentiment
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      
       const response = await fetch('https://netcarmsimamwzchhxkk.supabase.co/functions/v1/analyze-sentiment', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${supabase.auth.getSession().then(res => res.data.session?.access_token)}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({ username, tweet: tweetText }),
       });
@@ -83,18 +86,25 @@ export function useSentiment() {
     
     try {
       // Check if user already exists in blacklisted_users
-      const { data: existingUser } = await supabase
+      const { data: existingUsers, error: queryError } = await supabase
         .from('blacklisted_users')
         .select('*')
         .eq('twitter_username', twitterUsername)
-        .single();
+        .eq('user_id', user.id);
+      
+      if (queryError) {
+        console.error("Error querying blacklist:", queryError);
+        return;
+      }
+      
+      const existingUser = existingUsers && existingUsers.length > 0 ? existingUsers[0] : null;
       
       if (existingUser) {
         // User exists, increment negative tweet count
         const newCount = existingUser.negative_tweet_count + 1;
         const shouldBlacklist = newCount >= 3;
         
-        await supabase
+        const { error: updateError } = await supabase
           .from('blacklisted_users')
           .update({ 
             negative_tweet_count: newCount,
@@ -103,12 +113,17 @@ export function useSentiment() {
           })
           .eq('id', existingUser.id);
         
+        if (updateError) {
+          console.error("Error updating blacklist:", updateError);
+          return;
+        }
+        
         if (shouldBlacklist && !existingUser.blacklisted) {
           toast.warning(`@${twitterUsername} has been blacklisted due to multiple negative tweets`);
         }
       } else {
         // User doesn't exist, create new record
-        await supabase
+        const { error: insertError } = await supabase
           .from('blacklisted_users')
           .insert({
             twitter_username: twitterUsername,
@@ -116,6 +131,10 @@ export function useSentiment() {
             blacklisted: false,
             user_id: user.id
           });
+          
+        if (insertError) {
+          console.error("Error inserting to blacklist:", insertError);
+        }
       }
     } catch (error) {
       console.error("Error updating blacklist:", error);

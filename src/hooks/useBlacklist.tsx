@@ -55,7 +55,7 @@ export const BlacklistProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
       
-      const formattedData = data.map(item => ({
+      const formattedData = (data || []).map(item => ({
         id: item.id,
         username: item.twitter_username,
         negative_tweet_count: item.negative_tweet_count,

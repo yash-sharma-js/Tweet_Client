@@ -30,6 +30,22 @@ export function Navbar() {
     setIsDarkMode(!isDarkMode);
   };
   
+  // Get first letter of username for avatar
+  const getInitial = () => {
+    if (user?.username) {
+      return user.username.charAt(0).toUpperCase();
+    }
+    if (user?.email) {
+      return user.email.charAt(0).toUpperCase();
+    }
+    return 'U';
+  };
+  
+  // Get display name
+  const getDisplayName = () => {
+    return user?.username || user?.email?.split('@')[0] || 'User';
+  };
+  
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl">
       <div className="max-content-width flex h-16 items-center justify-between">
@@ -55,9 +71,9 @@ export function Navbar() {
                 <div className="grid gap-1">
                   <div className="flex items-center gap-2 rounded-md px-2 py-1.5">
                     <div className="rounded-full bg-primary/10 p-1">
-                      <span className="text-xs font-medium text-primary">{user?.username?.charAt(0).toUpperCase()}</span>
+                      <span className="text-xs font-medium text-primary">{getInitial()}</span>
                     </div>
-                    <div className="text-sm font-medium">{user?.username}</div>
+                    <div className="text-sm font-medium">{getDisplayName()}</div>
                   </div>
                   
                   <AlertDialog>
@@ -105,11 +121,11 @@ export function Navbar() {
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
                 <span className="text-sm font-medium text-primary">
-                  {user?.username?.charAt(0).toUpperCase()}
+                  {getInitial()}
                 </span>
               </div>
               <span className="hidden text-sm font-medium md:inline-block">
-                {user?.username}
+                {getDisplayName()}
               </span>
             </div>
             
