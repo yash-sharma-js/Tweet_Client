@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { toast } from "sonner";
 import { useBlacklist } from "./useBlacklist";
@@ -28,7 +27,7 @@ export function useSentiment() {
       setResult(null);
       
       // Call the new API endpoint to analyze sentiment
-      const response = await fetch('http://0.0.0.0:8082/checkTweet', {
+      const response = await fetch('http://localhost:8081/predict', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -43,25 +42,15 @@ export function useSentiment() {
       
       const data = await response.json();
       
-      // Extract sentiment scores from the response
-      const sentimentScores = data.sentiment_scores;
-      
-      // Find the sentiment with the highest score
-      const sentiments = Object.entries(sentimentScores) as [
-        "positive" | "negative" | "neutral", 
-        number
-      ][];
-      
-      const [highestSentiment, highestScore] = sentiments.reduce(
-        (max, current) => (current[1] > max[1] ? current : max),
-        ["neutral", 0]
-      );
+      // Extract sentiment from the new response format
+      const sentimentLabel = data.sentiment.toLowerCase() as "positive" | "negative" | "neutral";
+      const confidenceScore = data.confidence;
       
       // Create a result object with the determined sentiment
       const finalResult: SentimentResult = { 
-        score: highestScore,
-        label: highestSentiment, 
-        confidence: highestScore
+        score: confidenceScore,
+        label: sentimentLabel, 
+        confidence: confidenceScore
       };
       
       setResult(finalResult);
