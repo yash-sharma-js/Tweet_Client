@@ -11,8 +11,10 @@ export default function Dashboard() {
   const { user } = useAuth();
   
   useEffect(() => {
-    const displayName = user?.username || user?.email?.split('@')[0] || 'User';
-    toast.success(`Welcome back, ${displayName}!`);
+    if (user) {
+      const displayName = user?.username || user?.email?.split('@')[0] || 'User';
+      toast.success(`Welcome back, ${displayName}!`);
+    }
   }, [user]);
   
   return (
