@@ -26,31 +26,20 @@ export function useSentiment() {
       setIsAnalyzing(true);
       setResult(null);
       
-      // Call the new API endpoint to analyze sentiment
-      const response = await fetch('http://localhost:8081/predict', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ text: tweetText }),
+      // Call the Supabase Edge Function to analyze sentiment
+      const { data, error } = await supabase.functions.invoke('analyze-sentiment', {
+        body: { username, tweet: tweetText }
       });
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to analyze sentiment');
+      if (error) {
+        throw new Error(error.message || 'Failed to analyze sentiment');
       }
-      
-      const data = await response.json();
-      
-      // Extract sentiment from the new response format
-      const sentimentLabel = data.sentiment.toLowerCase() as "positive" | "negative" | "neutral";
-      const confidenceScore = data.confidence;
       
       // Create a result object with the determined sentiment
       const finalResult: SentimentResult = { 
-        score: confidenceScore,
-        label: sentimentLabel, 
-        confidence: confidenceScore
+        score: data.score,
+        label: data.label, 
+        confidence: data.confidence
       };
       
       setResult(finalResult);
